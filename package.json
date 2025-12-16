@@ -1,0 +1,17 @@
+{
+  "name": "api-crud-todo-list",
+  "version": "1.0.0",
+  "description": "Basic CRUD to practice Node.js fundamentals",
+  "license": "ISC",
+  "author": "Laiane Suzart",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.2"
+  },
+  "dependencies": {
+    "csv-parse": "^6.1.0"
+  }
+}

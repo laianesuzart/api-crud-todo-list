@@ -2,6 +2,7 @@ import {
   createTask,
   deleteTask,
   getTasks,
+  importTasks,
   toggleCompleteTask,
   updateTask,
 } from './controllers/tasks.controller.ts';
@@ -17,6 +18,11 @@ export const routes = [
     method: 'POST',
     path: buildRoutePath('/tasks'),
     handler: createTask,
+  },
+  {
+    method: 'POST',
+    path: buildRoutePath('/tasks/import'),
+    handler: importTasks,
   },
   {
     method: 'PUT',

@@ -32,7 +32,7 @@ const server = http.createServer(async (req: Request, res) => {
     req.query = query ? extractQueryParams(query) : {};
 
     try {
-      return route.handler(req, res);
+      return await route.handler(req, res);
     } catch (err) {
       return errorHandler(err, req, res);
     }

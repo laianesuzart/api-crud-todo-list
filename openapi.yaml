@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: Task API (Todo List)
+  description: Simple CRUD API for tasks with CSV import endpoint
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+
+paths:
+  /tasks:
+    get:
+      summary: List tasks
+      description: Returns a list of tasks. Supports optional `search` query that searches `title` and `description` fields.
+      parameters:
+        - name: search
+          in: query
+          description: Search term to look for in task fields (searches `title` and `description` only)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A JSON array of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTask'
+            examples:
+              sample:
+                value:
+                  title: Buy milk
+                  description: 2 liters of milk
+      responses:
+        '201':
+          description: Task created (no content)
+        '400':
+          $ref: '#/components/responses/ValidationFailed' 
+
+  /tasks/import:
+    post:
+      summary: Import tasks from CSV
+      description: |
+        Accepts a raw CSV request body (Content-Type: text/csv). CSV must include headers `title,description`.
+        Responds with a summary object indicating how many rows were inserted and which were skipped or errored.
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+            example: |
+              title,description
+              Buy milk,2 liters of milk
+              Call Alice,Discuss project
+          application/csv:
+            schema:
+              type: string
+            example: |
+              title,description
+              Buy milk,2 liters of milk
+              Call Alice,Discuss project
+      responses:
+        '201':
+          description: Tasks created (one or more rows inserted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportSummary'
+        '400':
+          description: Invalid CSV or no rows inserted
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ImportSummary'
+                  - $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_rows:
+                  value:
+                    inserted: 0
+                    skipped: []
+                    errors: []
+                parse_error:
+                  value:
+                    error: "Invalid CSV or data"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                error: "Unsupported content type, expected text/csv"
+
+  /tasks/{id}:
+    put:
+      summary: Update a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTask'
+            examples:
+              partial:
+                value:
+                  title: Buy oat milk
+      responses:
+        '204':
+          description: Task updated successfully (no content)
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Task deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{id}/complete:
+    patch:
+      summary: Toggle task completion
+      description: Marks a task as completed, or unmarks it if already completed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Completion toggled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, title, description, completed_at, created_at, updated_at]
+
+    NewTask:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+      required: [title, description]
+
+    UpdateTask:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+      minProperties: 1
+
+    ImportSummary:
+      type: object
+      properties:
+        inserted:
+          type: integer
+          example: 10
+        skipped:
+          type: array
+          items:
+            type: integer
+          example: [3, 7]
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              reason:
+                type: string
+          example:
+            - row: 3
+              reason: "missing title or description"
+
+    ErrorSimple:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            status:
+              type: integer
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorSimple'
+    ValidationFailed:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+              status: 404
+
+tags:
+  - name: tasks
+    description: Task management operations
